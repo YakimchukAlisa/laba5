@@ -4,12 +4,16 @@
 #include <vector>
 #include <math.h>
 #include <iostream>
+#include <random>
+#include <chrono>
+
 
 using namespace sf;
 using namespace std;
 
 class Food;
 class Map;
+class Fruit;
 
 class GameSettings {
 private:
@@ -115,11 +119,10 @@ public:
         return lives; // Возвращаем ссылку на переменную lives
     }
 
-    void PacmanMove(Map& map, Food& smallFood, Food& bigFood);
+    void PacmanMove(Map& map, Food& smallFood, Food& bigFood, Fruit& fruit);
 
     int WonOrLost(Food smallFood, Food bigFood, Text& Result);
 };
-
 
 int Pacman::maxPoints = 0; // Инициализация статической переменной
 // Реализация статического метода
@@ -148,12 +151,16 @@ public:
     void decreaseCount() { count--; totalFoodCount--; }
     static int getTotalFoodCount();
     static void setTotalFoodCount(int count);
-    friend void Pacman::PacmanMove(Map& map, Food& smallFood, Food& bigFood);
+    friend void Pacman::PacmanMove(Map& map, Food& smallFood, Food& bigFood, Fruit& fruit);
     friend int Pacman::WonOrLost(Food smallFood, Food bigFood, Text& Result);
 };
 int Food::totalFoodCount = 0; // Инициализация статического поля вне класса
 int Food::getTotalFoodCount() { return Food::totalFoodCount; }
 void Food::setTotalFoodCount(int count) { Food::totalFoodCount = count; }
+
+
+//ФРУКТ
+
 
 class Map {
 private:
@@ -166,7 +173,7 @@ public:
     int getW() const { return W; }
     Tile getTile(int y, int x) const { return Mase[y][x]; }
     void setTile(int y, int x, Tile tile) { Mase[y][x] = tile; }
-    friend void Pacman::PacmanMove(Map& map, Food& smallFood, Food& bigFood);
+    friend void Pacman::PacmanMove(Map& map, Food& smallFood, Food& bigFood, Fruit& fruit);
     void createMap() {
         std::string tempMase[] = {
             "                              ",
@@ -221,6 +228,8 @@ public:
         biglCircle.setFillColor(settings.getCircle2Color());
         RectangleShape pacman(Vector2f(settings.getGridSize(), settings.getGridSize()));
         pacman.setFillColor(settings.getPacmanColor());
+        CircleShape fruitShape(6);
+        fruitShape.setFillColor(sf::Color::Red);
         for (int i = 0; i < H; i++)
             for (int j = 0; j < W; j++)
             {
@@ -246,12 +255,58 @@ public:
                     pacman.setPosition(j * settings.getGridSize(), i * settings.getGridSize());
                     window.draw(pacman);
                 }
+                else if (Mase[i][j].type == 'F')
+                {
+                    fruitShape.setPosition(j * settings.getGridSize(), i * settings.getGridSize());
+                    window.draw(fruitShape);
+                }
             }
     }
 };
 
 
-void Pacman::PacmanMove(Map& map, Food& smallFood, Food& bigFood)         //дружественная функция
+class Fruit {
+private:
+    int x;       // Координата X на карте
+    int y;       // Координата Y на карте
+    int points;  // Количество очков за съедение
+    float lifeTime;   // Время жизни фрукта в секундах
+    sf::CircleShape shape; // Графическое представление
+    bool isActive;
+
+public:
+    //Fruit() : isActive(false) {};
+    Fruit(int points, float lifeTime, bool isActive) : points(points), lifeTime(lifeTime), isActive(isActive) {}
+    bool isActiveFruit() const { return isActive; }
+    void setActive(bool active) { isActive = active; }
+    int getX() const { return x; }
+    int getY() const { return y; }
+    int getPoints() const { return points; }
+    float getLifeTime() const { return lifeTime; }
+    void setLifeTime(float t) { lifeTime = t; }
+    friend void Pacman::PacmanMove(Map& map, Food& smallFood, Food& bigFood, Fruit& fruit);
+    void createFruit(GameSettings& settings, Map& map, RenderWindow& window, Food food) {
+        if ((food.getTotalFoodCount() == 176 || food.getTotalFoodCount() == 76) && !isActive)
+        {
+            int randY, randX;
+            do {
+                randY = rand() % 30 + 4;
+                randX = rand() % 23 + 4;
+            } while (map.getTile(randY, randX).type != ' ');
+            x = randX;
+            y = randY;
+            shape.setPosition(randX * settings.getGridSize(), randY * settings.getGridSize());
+            //  window.draw(shape);
+            isActive = true;
+        }
+        if (isActive)
+        {
+            map.setTile(y, x, 'F');
+        }
+    }
+
+};
+void Pacman::PacmanMove(Map& map, Food& smallFood, Food& bigFood, Fruit& fruit)         //дружественная функция
 {
     if (Keyboard::isKeyPressed(Keyboard::Up) && map.Mase[nextY - 1][nextX].isPassable && !(nextY == 17 && nextX == 0 || nextY == 17 && nextX == map.getW() - 1)) {
         nextDirection = 0;
@@ -314,6 +369,11 @@ void Pacman::PacmanMove(Map& map, Food& smallFood, Food& bigFood)         //др
         {
             addPoints(bigFood.point);
             bigFood.decreaseCount();
+        }
+        if (fruit.isActive && nextX == fruit.x && nextY == fruit.y)
+        {
+            addPoints(fruit.points);
+            fruit.isActive = false;;
         }
         map.setTile(y, x, ' ');
         map.setTile(nextY, nextX, 'P');
@@ -722,7 +782,14 @@ int main()
     sf::Text errorText;
     sf::RenderWindow windoww; // Объявляем окно здесь, чтобы оно всегда было доступно
 
-    windoww.create(sf::VideoMode(700, 200), "Error: Font not loaded. Press any key to close"); // Создаем окно заранее
+
+
+    //float time;
+   // sf::Clock fruitSpawnTimer;
+   
+    Fruit fruit(15, 9, false);
+
+  
 
     try {
         if (!font.loadFromFile("Unformital Medium.ttf")) {           //если загрузка шрифта не удалась
@@ -730,6 +797,7 @@ int main()
         }
     }
     catch (const std::runtime_error& e) {                           //обработка исключения
+        windoww.create(sf::VideoMode(700, 200), "Error: Font not loaded. Press any key to close"); // Создаем окно заранее
         while (windoww.isOpen()) {
             sf::Event event;
             while (windoww.pollEvent(event)) {
@@ -800,6 +868,9 @@ int main()
         }
         window.clear(Color::Black);
         map.MasePaint(settings, window, smallFood, bigFood);
+        fruit.createFruit(settings, map, window, smallFood);
+       // fruit.draw(window, settings);
+       // time = fruitSpawnTimer.getElapsedTime().asSeconds();
         if (pacman.WonOrLost(smallFood, bigFood, Result))
         {
             blinky.ghostDraw(settings.getBlinkyColor(), window, settings);
@@ -815,13 +886,14 @@ int main()
         }
         else
         {
-            pacman.PacmanMove(map, smallFood, bigFood);
+            pacman.PacmanMove(map, smallFood, bigFood, fruit);
             //combinedGhost = blinky + pinky;
             //combinedGhost.ghostDraw(Color::White, window, settings);
             blinky.BlinkyMove(pacman, map, settings, window);
             pinky.PinkyMove(pacman, map, settings, window);
             inky.InkyMove(pacman, map, blinky, settings, window);
             clyde.ClydeMove(pacman, map, settings, window);
+           // fruit.createFruit(settings, map, window, smallFood);
             if (clyde.Lose(pacman, blinky, pinky, inky))
             {
                 if (pacman.getLives())
