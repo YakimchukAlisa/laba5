@@ -737,8 +737,6 @@ int main()
         return EXIT_FAILURE;                                   //завершаем программу
     }
 
-  
-
     sf::Text pointsText;
     pointsText.setFont(font);
     pointsText.setCharacterSize(40);
