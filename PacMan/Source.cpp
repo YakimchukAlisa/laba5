@@ -76,6 +76,14 @@ public:
     sf::Color getClydeColor() const { return clydeColor; }
 };
 
+class Tile {
+public:
+    char type; // 'X', 'o', ' ', 'P' и т.д.
+    bool isPassable;
+    // Другие свойства, если нужно
+    Tile(char type = ' ', bool isPassable = true) : type(type), isPassable(isPassable) {}
+};
+
 class Pacman {
 private:
     int x, y, nextX, nextY, score, nextDirection, lives, points;
@@ -150,14 +158,14 @@ void Food::setTotalFoodCount(int count) { Food::totalFoodCount = count; }
 class Map {
 private:
     int H, W;
-    std::vector<std::string> Mase;
+    std::vector<std::vector<Tile>> Mase;
 public:
     ~Map() {};
-    Map(int H, int W) : H(H), W(W) { Mase.resize(H); }
+    Map(int H, int W) : H(H), W(W) { Mase.resize(H, std::vector<Tile>(W)); }
     int getH() const { return H; }
     int getW() const { return W; }
-    char getTile(int y, int x) const { return  Mase[y][x]; }
-    void setTile(int y, int x, char tile) { Mase[y][x] = tile; }
+    Tile getTile(int y, int x) const { return Mase[y][x]; }
+    void setTile(int y, int x, Tile tile) { Mase[y][x] = tile; }
     friend void Pacman::PacmanMove(Map& map, Food& smallFood, Food& bigFood);
     void createMap() {
         std::string tempMase[] = {
@@ -198,7 +206,9 @@ public:
             "                              ",
         };
         for (int i = 0; i < H; ++i) {
-            Mase[i] = tempMase[i];
+            for (int j = 0; j < W; ++j) {
+                Mase[i][j] = Tile(tempMase[i][j], tempMase[i][j] != 'X');
+            }
         }
     }
 
@@ -214,24 +224,24 @@ public:
         for (int i = 0; i < H; i++)
             for (int j = 0; j < W; j++)
             {
-                if (Mase[i][j] == 'X')
+                if (Mase[i][j].type == 'X')
                 {
                     square.setPosition(j * settings.getGridSize(), i * settings.getGridSize());
                     window.draw(square);
                 }
-                else if (Mase[i][j] == smallFood.getType())
+                else if (Mase[i][j].type == smallFood.getType())
                 {
                     smallCircle.setPosition(j * settings.getGridSize() + 8.5, i * settings.getGridSize() + 8.5f);
                     int pacmanX = static_cast<int>(pacman.getPosition().y / settings.getGridSize());
                     int pacmanCol = static_cast<int>(pacman.getPosition().x / settings.getGridSize());
                     window.draw(smallCircle);
                 }
-                else if (Mase[i][j] == bigFood.getType())
+                else if (Mase[i][j].type == bigFood.getType())
                 {
                     biglCircle.setPosition(j * settings.getGridSize() + 5.5f, i * settings.getGridSize() + 5.5f);
                     window.draw(biglCircle);
                 }
-                else if (Mase[i][j] == 'P')
+                else if (Mase[i][j].type == 'P')
                 {
                     pacman.setPosition(j * settings.getGridSize(), i * settings.getGridSize());
                     window.draw(pacman);
@@ -243,22 +253,22 @@ public:
 
 void Pacman::PacmanMove(Map& map, Food& smallFood, Food& bigFood)         //дружественная функция
 {
-    if (Keyboard::isKeyPressed(Keyboard::Up) && map.Mase[nextY - 1][nextX] != 'X' && !(nextY == 17 && nextX == 0 || nextY == 17 && nextX == map.getW() - 1)) {
+    if (Keyboard::isKeyPressed(Keyboard::Up) && map.Mase[nextY - 1][nextX].isPassable && !(nextY == 17 && nextX == 0 || nextY == 17 && nextX == map.getW() - 1)) {
         nextDirection = 0;
         nextX = x;
         nextY = y;
     }
-    if (Keyboard::isKeyPressed(Keyboard::Down) && map.Mase[nextY + 1][nextX] != 'X' && !(nextY == 17 && nextX == 0 || nextY == 17 && nextX == map.getW() - 1)) {
+    if (Keyboard::isKeyPressed(Keyboard::Down) && map.Mase[nextY + 1][nextX].isPassable && !(nextY == 17 && nextX == 0 || nextY == 17 && nextX == map.getW() - 1)) {
         nextDirection = 1;
         nextX = x;
         nextY = y;
     }
-    if (Keyboard::isKeyPressed(Keyboard::Left) && (map.Mase[nextY][nextX - 1] != 'X')) {
+    if (Keyboard::isKeyPressed(Keyboard::Left) && (map.Mase[nextY][nextX - 1].isPassable)) {
         nextDirection = 2;
         nextX = x;
         nextY = y;
     }
-    if (Keyboard::isKeyPressed(Keyboard::Right) && (map.Mase[nextY][nextX + 1] != 'X')) {
+    if (Keyboard::isKeyPressed(Keyboard::Right) && (map.Mase[nextY][nextX + 1].isPassable)) {
         nextDirection = 3;
         nextX = x;
         nextY = y;
@@ -270,37 +280,37 @@ void Pacman::PacmanMove(Map& map, Food& smallFood, Food& bigFood)         //др
         switch (nextDirection)
         {
         case 0:
-            if (map.Mase[nextY - 1][nextX] != 'X' && nextY - 1 >= 0)
+            if (map.Mase[nextY - 1][nextX].isPassable && nextY - 1 >= 0)
                 nextY--;
             break;
         case 1:
-            if (map.Mase[nextY + 1][nextX] != 'X' && nextY + 1 <= 35)
+            if (map.Mase[nextY + 1][nextX].isPassable && nextY + 1 <= 35)
                 nextY++;
             break;
         case 2:
             if (nextY == 17 && nextX == 1)
                 nextX = map.W - 2;
-            else if (map.Mase[nextY][nextX - 1] != 'X' && nextX - 1 >= 0)
+            else if (map.Mase[nextY][nextX - 1].isPassable && nextX - 1 >= 0)
                 nextX--;
             break;
         case 3:
             if (nextY == 17 && nextX == map.getW() - 2)
                 nextX = 1;
-            else if (map.Mase[nextY][nextX + 1] != 'X' && nextX + 1 <= 35)
+            else if (map.Mase[nextY][nextX + 1].isPassable && nextX + 1 <= 35)
                 nextX++;
             break;
         }
         score = 0;
     }
 
-    if ((map.Mase[nextY][nextX] == ' ' || map.Mase[nextY][nextX] == smallFood.getType() || map.Mase[nextY][nextX] == bigFood.getType()) && nextY != 0 && nextX != 0)
+    if (map.Mase[nextY][nextX].isPassable && nextY != 0 && nextX != 0)
     {
-        if (map.Mase[nextY][nextX] == smallFood.getType())
+        if (map.Mase[nextY][nextX].type == smallFood.getType())
         {
             addPoints(smallFood.point);
             smallFood.decreaseCount();
         }
-        if (map.Mase[nextY][nextX] == bigFood.getType())
+        if (map.Mase[nextY][nextX].type == bigFood.getType())
         {
             addPoints(bigFood.point);
             bigFood.decreaseCount();
@@ -390,19 +400,19 @@ public:
             distanceRight = distance(goalX, goalY, 0, y);
         else distanceRight = distance(goalX, goalY, x + 1, y);
 
-        if (distanceRight <= minDistance && map.getTile(y, x + 1) != 'X' && lastDirection != 2) {
+        if (distanceRight <= minDistance && map.getTile(y, x + 1).isPassable && lastDirection != 2) {
             minDistance = distanceRight;
             direction = 3;
         }
-        if (distanceUp <= minDistance && map.getTile(y - 1, x) != 'X' && lastDirection != 1 && !(y == 17 && x == 0 || y == 17 && x == map.getW() - 1)) {
+        if (distanceUp <= minDistance && map.getTile(y - 1, x).isPassable && lastDirection != 1 && !(y == 17 && x == 0 || y == 17 && x == map.getW() - 1)) {
             minDistance = distanceUp;
             direction = 0;
         }
-        if (distanceLeft <= minDistance && map.getTile(y, x - 1) != 'X' && lastDirection != 3) {
+        if (distanceLeft <= minDistance && map.getTile(y, x - 1).isPassable && lastDirection != 3) {
             minDistance = distanceLeft;
             direction = 2;
         }
-        if (distanceDown <= minDistance && map.getTile(y + 1, x) != 'X' && lastDirection != 0 && !(y == 17 && x == 0 || y == 17 && x == map.getW() - 1)) {
+        if (distanceDown <= minDistance && map.getTile(y + 1, x).isPassable && lastDirection != 0 && !(y == 17 && x == 0 || y == 17 && x == map.getW() - 1)) {
             minDistance = distanceDown;
             direction = 1;
         }
