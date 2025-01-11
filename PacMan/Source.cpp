@@ -83,8 +83,7 @@ public:
 class Tile {
 public:
     char type; // 'X', 'o', ' ', 'P' и т.д.
-    bool isPassable;
-    // Другие свойства, если нужно
+    bool isPassable;   //можно ли пройти через клетку
     Tile(char type = ' ', bool isPassable = true) : type(type), isPassable(isPassable) {}
 };
 
@@ -158,14 +157,10 @@ int Food::totalFoodCount = 0; // Инициализация статическо
 int Food::getTotalFoodCount() { return Food::totalFoodCount; }
 void Food::setTotalFoodCount(int count) { Food::totalFoodCount = count; }
 
-
-//ФРУКТ
-
-
 class Map {
 private:
     int H, W;
-    std::vector<std::vector<Tile>> Mase;
+    std::vector<std::vector<Tile>> Mase;  //двумерный массив элементов класса Tile
 public:
     ~Map() {};
     Map(int H, int W) : H(H), W(W) { Mase.resize(H, std::vector<Tile>(W)); }
@@ -189,15 +184,15 @@ public:
             " XoXXXXoXXoXXXXXXXXoXXoXXXXoX ",
             " XooooooXXooooXXooooXXooooooX ",
             " XXXXXXoXXXXX XX XXXXXoXXXXXX ",
-            "      XoXXXXX XX XXXXXoX      ",
-            "      XoXX          XXoX      ",
-            "      XoXX XXXXXXXX XXoX      ",
-            " XXXXXXoXX X      X XXoXXXXXX ",
-            "       o   X      X   o       ",
-            " XXXXXXoXX X      X XXoXXXXXX ",
-            "      XoXX XXXXXXXX XXoX      ",
-            "      XoXX          XXoX      ",
-            "      XoXX XXXXXXXX XXoX      ",
+            " nnnnnXoXXXXX XX XXXXXoXnnnnn ",
+            " nnnnnXoXX          XXoXnnnnn ",
+            " nnnnnXoXX XXXXXXXX XXoXnnnnn ",
+            " XXXXXXoXX XnnnnnnX XXoXXXXXX ",
+            "       o   XnnnnnnX   o       ",
+            " XXXXXXoXX XnnnnnnX XXoXXXXXX ",
+            " nnnnnXoXX XXXXXXXX XXoXnnnnn ",
+            " nnnnnXoXX          XXoXnnnnn ",
+            " nnnnnXoXX XXXXXXXX XXoXnnnnn ",
             " XXXXXXoXX XXXXXXXX XXoXXXXXX ",
             " XooooooooooooXXooooooooooooX ",
             " XoXXXXoXXXXXoXXoXXXXXoXXXXoX ",
@@ -212,14 +207,14 @@ public:
             " XXXXXXXXXXXXXXXXXXXXXXXXXXXX ",
             "                              ",
         };
-        for (int i = 0; i < H; ++i) {
+        for (int i = 0; i < H; ++i) {            //формирование двумерного массива
             for (int j = 0; j < W; ++j) {
                 Mase[i][j] = Tile(tempMase[i][j], tempMase[i][j] != 'X');
             }
         }
     }
 
-    void MasePaint(GameSettings& settings, RenderWindow& window, Food& smallFood, Food& bigFood) {
+    void MasePaint(GameSettings& settings, RenderWindow& window, Food& smallFood, Food& bigFood, Sprite fruitShape) {
         RectangleShape square(Vector2f(settings.getGridSize(), settings.getGridSize()));
         square.setFillColor(settings.getSquareColor());
         CircleShape smallCircle(3);
@@ -228,8 +223,7 @@ public:
         biglCircle.setFillColor(settings.getCircle2Color());
         RectangleShape pacman(Vector2f(settings.getGridSize(), settings.getGridSize()));
         pacman.setFillColor(settings.getPacmanColor());
-        CircleShape fruitShape(6);
-        fruitShape.setFillColor(sf::Color::Red);
+       ;
         for (int i = 0; i < H; i++)
             for (int j = 0; j < W; j++)
             {
@@ -257,7 +251,6 @@ public:
                 }
                 else if (Mase[i][j].type == 'F')
                 {
-                    fruitShape.setPosition(j * settings.getGridSize(), i * settings.getGridSize());
                     window.draw(fruitShape);
                 }
             }
@@ -267,45 +260,44 @@ public:
 
 class Fruit {
 private:
-    int x;       // Координата X на карте
-    int y;       // Координата Y на карте
-    int points;  // Количество очков за съедение
-    float lifeTime;   // Время жизни фрукта в секундах
-    sf::CircleShape shape; // Графическое представление
-    bool isActive;
-
+    int x;       //координата X на карте
+    int y;       //координата Y на карте
+    int points;  //количество очков за съедение
+    Sprite sprite; //графическое представление
+    static bool isActive;  //активен ли фрукт
 public:
-    //Fruit() : isActive(false) {};
-    Fruit(int points, float lifeTime, bool isActive) : points(points), lifeTime(lifeTime), isActive(isActive) {}
-    bool isActiveFruit() const { return isActive; }
-    void setActive(bool active) { isActive = active; }
+    Fruit() {};
+    Fruit(int points, Sprite sprite) : points(points), sprite(sprite)  {}
     int getX() const { return x; }
     int getY() const { return y; }
     int getPoints() const { return points; }
-    float getLifeTime() const { return lifeTime; }
-    void setLifeTime(float t) { lifeTime = t; }
+    Sprite getSprite() const { return sprite; }
+    void setIsActive(bool active) { Fruit::isActive = active; }
+    bool getIsActive() { return Fruit::isActive; }
     friend void Pacman::PacmanMove(Map& map, Food& smallFood, Food& bigFood, Fruit& fruit);
+
     void createFruit(GameSettings& settings, Map& map, RenderWindow& window, Food food) {
-        if ((food.getTotalFoodCount() == 176 || food.getTotalFoodCount() == 76) && !isActive)
+        if ((food.getTotalFoodCount() == 176 || food.getTotalFoodCount() == 76) && !isActive)  //когда Пакман съел первые 70 или 170 точек
         {
             int randY, randX;
-            do {
+            do {                                           //выбор случайных координат
                 randY = rand() % 30 + 4;
                 randX = rand() % 23 + 4;
             } while (map.getTile(randY, randX).type != ' ');
             x = randX;
             y = randY;
-            shape.setPosition(randX * settings.getGridSize(), randY * settings.getGridSize());
-            //  window.draw(shape);
+            sprite.setPosition(randX * settings.getGridSize(), randY * settings.getGridSize());
             isActive = true;
         }
-        if (isActive)
+        if (isActive)                                 //если фрукт активен, добавляем его на карту
         {
             map.setTile(y, x, 'F');
         }
     }
-
 };
+
+bool Fruit::isActive = false;
+
 void Pacman::PacmanMove(Map& map, Food& smallFood, Food& bigFood, Fruit& fruit)         //дружественная функция
 {
     if (Keyboard::isKeyPressed(Keyboard::Up) && map.Mase[nextY - 1][nextX].isPassable && !(nextY == 17 && nextX == 0 || nextY == 17 && nextX == map.getW() - 1)) {
@@ -432,7 +424,6 @@ public:
         x++;
         return temp;
     }
-
 
     float distance(int x1, int y1, int x2, int y2) {
         return (sqrt(pow(x1 - x2, 2) + pow(y1 - y2, 2)));
@@ -710,7 +701,7 @@ class Game {
 public:
     Game() {};
     ~Game() {};
-    void resetGame(Map& map, Food& smallFood, Food& bigFood, Pacman& pacman, Ghost** ghostArray, GameSettings& settings, Text& Result) {
+    void resetGame(Map& map, Food& smallFood, Food& bigFood, Pacman& pacman, Ghost** ghostArray, GameSettings& settings, Text& Result, Fruit& fruit) {
         // сброс карты
 
         map.createMap();
@@ -720,6 +711,8 @@ public:
         smallFood = Food(242, 5, 'o');
         bigFood = Food(4, 10, 'O');
 
+        // сброс фрукта
+        fruit.setIsActive(false);
 
         // сброс Pacman
         pacman.setX(settings.getPacmanStartX());
@@ -754,7 +747,7 @@ int main()
     //динамический массив объектов класса GameSettings 
     GameSettings* settingsArray;
     settingsArray = new GameSettings[2];
-    settingsArray[0] = GameSettings("Pac-Man 1", -25, 14, 26, sf::Color::Yellow, sf::Color::Blue, sf::Color::White, sf::Color::White, sf::Color::Red, sf::Color(255, 185, 193),
+    settingsArray[0] = GameSettings("Pac-Man 1", -10, 14, 26, sf::Color::Yellow, sf::Color::Blue, sf::Color::White, sf::Color::White, sf::Color::Red, sf::Color(255, 185, 193),
         sf::Color::Cyan, sf::Color(255, 165, 0));
     settingsArray[1] = GameSettings("Pac-Man 2", 25, 14, 8, sf::Color(255, 255, 153), sf::Color(100, 149, 247), sf::Color(255, 245, 238),
         sf::Color(255, 228, 225), sf::Color(220, 20, 60), sf::Color(255, 105, 180), sf::Color(176, 234, 240), sf::Color(255, 140, 0)
@@ -768,7 +761,46 @@ int main()
     Food smallFood(242, 5, 'o');
     Food bigFood(4, 10, 'O');
 
-    //Mассив динамических объектов класса Ghost
+    sf::Texture cherryTexture;
+    cherryTexture.loadFromFile("images/cherry.png");
+    sf::Sprite cherryShape;
+    cherryShape.setTexture(cherryTexture);
+    cherryShape.setScale(0.1f, 0.1f);
+
+    sf::Texture appleTexture;
+    appleTexture.loadFromFile("images/apple.png");
+    sf::Sprite appleShape;
+    appleShape.setTexture(appleTexture);
+    appleShape.setScale(0.02f, 0.02f);
+    
+    sf::Texture pearTexture;
+    pearTexture.loadFromFile("images/pear.png");
+    sf::Sprite pearShape;
+    pearShape.setTexture(pearTexture);
+    pearShape.setScale(0.1f, 0.1f);
+    
+    sf::Texture orangeTexture;
+    orangeTexture.loadFromFile("images/orange.png");
+    sf::Sprite orangeShape;
+    orangeShape.setTexture(orangeTexture);
+    orangeShape.setScale(0.1f, 0.1f);
+   
+    sf::Texture watermelonTexture;
+    watermelonTexture.loadFromFile("images/watermelon.png");
+    sf::Sprite watermelonShape;
+    watermelonShape.setTexture(watermelonTexture);
+    watermelonShape.setScale(0.03f, 0.03f);
+
+    //массив фруктов
+    Fruit fruitArray[5];
+    fruitArray[0] = Fruit(20, cherryShape);
+    fruitArray[1] =Fruit(30, appleShape);
+    fruitArray[2] = Fruit(40, pearShape);
+    fruitArray[3] = Fruit(50, orangeShape);
+    fruitArray[4] = Fruit(60,  watermelonShape);
+    int randFruit = 0;
+
+    //массив динамических объектов класса Ghost
     ghostArray[0] = new Blinky(11, 14, 0, 3, 3);
     ghostArray[1] = new Pinky(13, 14, 0, 3, 3);
     ghostArray[2] = new Inky(15, 14, 0, 3, 3);
@@ -779,25 +811,14 @@ int main()
     Clyde& clyde = *static_cast<Clyde*>(ghostArray[3]);
 
     sf::Font font;
-    sf::Text errorText;
-    sf::RenderWindow windoww; // Объявляем окно здесь, чтобы оно всегда было доступно
-
-
-
-    //float time;
-   // sf::Clock fruitSpawnTimer;
-   
-    Fruit fruit(15, 9, false);
-
-  
-
+    sf::RenderWindow windoww; //объявляем окно
     try {
         if (!font.loadFromFile("Unformital Medium.ttf")) {           //если загрузка шрифта не удалась
             throw std::runtime_error("Failed to load font.");        //вызывается исключение
         }
     }
     catch (const std::runtime_error& e) {                           //обработка исключения
-        windoww.create(sf::VideoMode(700, 200), "Error: Font not loaded. Press any key to close"); // Создаем окно заранее
+        windoww.create(sf::VideoMode(700, 200), "Error: Font not loaded. Press any key to close"); //создаём окно
         while (windoww.isOpen()) {
             sf::Event event;
             while (windoww.pollEvent(event)) {
@@ -805,12 +826,6 @@ int main()
                     windoww.close();
                 }
             }
-            windoww.clear(sf::Color::Black);
-            sf::FloatRect textBounds = errorText.getLocalBounds();
-            sf::Vector2u windowSize = windoww.getSize();
-            errorText.setPosition((windowSize.x - textBounds.width) / 2, (windowSize.y - textBounds.height) / 2 - 50);
-            windoww.draw(errorText);
-            windoww.display();
         }
         return EXIT_FAILURE;                                   //завершаем программу
     }
@@ -837,7 +852,6 @@ int main()
     Record.setPosition(11 * settings.getGridSize(), 1 * settings.getGridSize());
     RenderWindow window(VideoMode(settings.getGridSize() * map.getW(), settings.getGridSize() * map.getH()), settings.getWindowTitle());
 
-
     // Операция сложения призраков:
     Ghost combinedGhost = blinky + pinky; // Combined Ghost: x = 7, y = 7
     // Combined Ghost: x = 7, y = 7
@@ -854,7 +868,6 @@ int main()
      // Координаты pinky после pinky++: x=14, y=14
      // Координаты tempPinky после pinky++: x=13, y=14
 
-
     while (window.isOpen())
     {
         Event event;
@@ -863,14 +876,16 @@ int main()
             if (event.type == Event::Closed)
                 window.close();
             if (event.type == Event::KeyPressed && event.key.code == sf::Keyboard::Enter) {
-                game.resetGame(map, smallFood, bigFood, pacman, ghostArray, settings, Result);
+                game.resetGame(map, smallFood, bigFood, pacman, ghostArray, settings, Result, fruitArray[0]);
             }
         }
+        if (!fruitArray[0].getIsActive())
+        {
+            randFruit = rand() % 5;
+        }
         window.clear(Color::Black);
-        map.MasePaint(settings, window, smallFood, bigFood);
-        fruit.createFruit(settings, map, window, smallFood);
-       // fruit.draw(window, settings);
-       // time = fruitSpawnTimer.getElapsedTime().asSeconds();
+        fruitArray[randFruit].createFruit(settings, map, window, smallFood);
+        map.MasePaint(settings, window, smallFood, bigFood, fruitArray[randFruit].getSprite());
         if (pacman.WonOrLost(smallFood, bigFood, Result))
         {
             blinky.ghostDraw(settings.getBlinkyColor(), window, settings);
@@ -886,14 +901,13 @@ int main()
         }
         else
         {
-            pacman.PacmanMove(map, smallFood, bigFood, fruit);
+            pacman.PacmanMove(map, smallFood, bigFood, fruitArray[randFruit]);
             //combinedGhost = blinky + pinky;
             //combinedGhost.ghostDraw(Color::White, window, settings);
             blinky.BlinkyMove(pacman, map, settings, window);
             pinky.PinkyMove(pacman, map, settings, window);
             inky.InkyMove(pacman, map, blinky, settings, window);
             clyde.ClydeMove(pacman, map, settings, window);
-           // fruit.createFruit(settings, map, window, smallFood);
             if (clyde.Lose(pacman, blinky, pinky, inky))
             {
                 if (pacman.getLives())
